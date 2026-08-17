@@ -1,0 +1,36 @@
+{
+  "type": "component",
+  "name": "ImageStack",
+  "uID": "image-stack-node",
+  "flowUID": "sample-flow",
+  "configs": {
+    "executor": {
+      "name": "ConfigExecutor",
+      "value": {
+        "name": "ImageStack",
+        "value": {
+          "name": "ImageStack",
+          "type": "Request",
+          "inputs": {
+            "inputImage": {
+              "name": "inputImage",
+              "value": [],
+              "type": "list"
+            }
+          },
+          "configs": {
+            "StackSize": {"name": "StackSize", "value": 10, "type": "number", "field": "textInput"},
+            "ResolutionWidth": {"name": "ResolutionWidth", "value": 1920, "type": "number", "field": "textInput"},
+            "ResolutionHeight": {"name": "ResolutionHeight", "value": 1080, "type": "number", "field": "textInput"},
+            "ClearBuffer": {"name": "ClearBuffer", "value": {"name": "False", "value": false, "type": "bool", "field": "option"}, "type": "object", "field": "dropdownlist"}
+          }
+        },
+        "type": "object",
+        "field": "option"
+      },
+      "type": "executor",
+      "field": "dependentDropdownlist"
+    }
+  }
+}
+
