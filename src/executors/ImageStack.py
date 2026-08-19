@@ -330,10 +330,10 @@ class ImageStack(_ComponentBase):
         return {key: value for key, value in image.items() if key not in reserved}
 
     @staticmethod
-    def _frame_image(frame: Dict[str, Any]) -> Any:
+    def _frame_image(frame: Dict[str, Any], *, name: str = "outputImages") -> Any:
         shape_bytes = np.asarray(frame["shape"], dtype=np.int64).tobytes()
         payload = {
-            "name": "outputImages",
+            "name": name,
             "uID": frame["uID"],
             "mimeType": "image/jpg",
             "encoding": "base64",
@@ -343,7 +343,7 @@ class ImageStack(_ComponentBase):
             "type": "Image",
         }
         payload.update(frame["metadata"])
-        payload["name"] = "outputImages"
+        payload["name"] = name
         payload["uID"] = frame["uID"]
         payload["mimeType"] = "image/jpg"
         payload["encoding"] = "base64"
@@ -356,11 +356,115 @@ class ImageStack(_ComponentBase):
 
         return NovaVisionImage(**payload)
 
-    def _build_response(self, frames: Iterable[Dict[str, Any]]) -> Any:
-        images = [self._frame_image(frame) for frame in frames]
+    @staticmethod
+    def _decode_stored_frame(frame: Dict[str, Any]) -> np.ndarray:
+        encoded = np.frombuffer(frame["jpeg"], dtype=np.uint8)
+        decoded = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+        if decoded is None:
+            raise ValueError("Image Stack could not decode a stored frame.")
+        return decoded
+
+    @classmethod
+    def _build_preview_frame(
+        cls,
+        frames: Iterable[Dict[str, Any]],
+        max_width: int,
+        max_height: int,
+    ) -> Dict[str, Any]:
+        frame_list = list(frames)
+        if not frame_list:
+            raise ValueError("Image Stack cannot build a preview without frames.")
+
+        decoded_frames = [(frame, cls._decode_stored_frame(frame)) for frame in frame_list]
+        first_image = decoded_frames[0][1]
+        source_height, source_width = first_image.shape[:2]
+        columns = min(4, len(decoded_frames))
+        rows = (len(decoded_frames) + columns - 1) // columns
+        row_height = max(1, max_height // rows)
+        label_height = min(28, max(18, row_height // 5))
+        image_height = max(1, row_height - label_height)
+        aspect_ratio = source_width / max(1, source_height)
+        cell_width = min(
+            max(1, max_width // columns),
+            source_width,
+            max(1, int(round(image_height * aspect_ratio))),
+        )
+        cell_height = max(1, int(round(cell_width / max(aspect_ratio, 1e-6))))
+        canvas_width = cell_width * columns
+        canvas_height = (cell_height + label_height) * rows
+        canvas = np.full((canvas_height, canvas_width, 3), 32, dtype=np.uint8)
+
+        for index, (frame, image) in enumerate(decoded_frames):
+            image_height_source, image_width_source = image.shape[:2]
+            scale = min(
+                1.0,
+                cell_width / max(1, image_width_source),
+                cell_height / max(1, image_height_source),
+            )
+            thumbnail_width = max(1, int(round(image_width_source * scale)))
+            thumbnail_height = max(1, int(round(image_height_source * scale)))
+            thumbnail = cv2.resize(
+                image,
+                (thumbnail_width, thumbnail_height),
+                interpolation=cv2.INTER_AREA if scale < 1.0 else cv2.INTER_NEAREST,
+            )
+            row, column = divmod(index, columns)
+            x = column * cell_width + (cell_width - thumbnail_width) // 2
+            y = row * (cell_height + label_height) + (cell_height - thumbnail_height) // 2
+            canvas[y : y + thumbnail_height, x : x + thumbnail_width] = thumbnail
+            cv2.rectangle(
+                canvas,
+                (column * cell_width, row * (cell_height + label_height)),
+                (column * cell_width + cell_width - 1, row * (cell_height + label_height) + cell_height - 1),
+                (180, 180, 180),
+                1,
+            )
+            frame_index = frame["metadata"].get("frame_index")
+            label = f"{index + 1}: frame {frame_index}" if frame_index is not None else f"{index + 1}"
+            cv2.putText(
+                canvas,
+                label,
+                (column * cell_width + 6, row * (cell_height + label_height) + cell_height + label_height - 7),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.42,
+                (235, 235, 235),
+                1,
+                cv2.LINE_AA,
+            )
+
+        success, encoded = cv2.imencode(
+            ".jpg",
+            canvas,
+            [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY],
+        )
+        if not success:
+            raise ValueError("OpenCV could not JPEG-encode the Image Stack preview.")
+        return {
+            "jpeg": encoded.tobytes(),
+            "shape": tuple(int(item) for item in canvas.shape),
+            "uID": f"stack-preview-{frame_list[0]['uID']}",
+            "metadata": {
+                "stack_count": len(frame_list),
+                "preview_order": "newest-first",
+            },
+        }
+
+    def _build_response(
+        self,
+        frames: Iterable[Dict[str, Any]],
+        max_width: int,
+        max_height: int,
+    ) -> Any:
+        frame_list = list(frames)
+        images = [self._frame_image(frame) for frame in frame_list]
+        preview = self._frame_image(
+            self._build_preview_frame(frame_list, max_width, max_height),
+            name="outputPreview",
+        )
         return ImageStackResponse(
             outputs=ImageStackOutputs(
                 outputImages={"value": images},
+                outputPreview={"value": preview},
                 outputData={"value": len(images)},
             )
         )
@@ -417,7 +521,7 @@ class ImageStack(_ComponentBase):
             buffer.appendleft(stored_frame)
             frames = list(buffer)
 
-        response = self._build_response(frames)
+        response = self._build_response(frames, width, height)
         if hasattr(self.request, "data") or isinstance(self.request, dict):
             return self._build_package_response(response)
         return response

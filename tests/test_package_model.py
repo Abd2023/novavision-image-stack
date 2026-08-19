@@ -12,6 +12,7 @@ from src.models.PackageModel import (
     InputImage,
     OutputData,
     OutputImages,
+    OutputPreview,
     PackageModel,
     ResolutionHeight,
     ResolutionWidth,
@@ -56,10 +57,11 @@ def test_package_model_schema_exposes_expected_sockets_and_task_title():
         "ResolutionHeight",
         "ClearBuffer",
     }
-    assert set(response_payload["outputs"]) == {"outputImages", "outputData"}
+    assert set(response_payload["outputs"]) == {"outputImages", "outputPreview", "outputData"}
     assert package_payload["configs"]["executor"]["value"]["name"] == "ImageStack"
     assert schema(InputImage)["title"] == "Image"
     assert schema(OutputImages)["title"] == "Images"
+    assert schema(OutputPreview)["title"] == "Stack Preview"
     assert schema(OutputData)["title"] == "Frame Count"
     assert "Image Stack" in str(executor_schema)
 

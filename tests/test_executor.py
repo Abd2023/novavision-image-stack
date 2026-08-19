@@ -91,6 +91,19 @@ def test_fifo_eviction_keeps_the_latest_stack_size_frames():
     assert output_ids(response) == ["frame-4", "frame-3", "frame-2"]
 
 
+def test_stack_preview_is_a_single_image_for_image_view():
+    bootstrap = ImageStack.bootstrap()
+    for index in range(1, 5):
+        response = run_local(request_for(index, stack_size=4), bootstrap)
+
+    preview = response.outputs.outputPreview.value
+    assert preview.name == "outputPreview"
+    assert preview.type == "Image"
+    assert preview.stack_count == 4
+    assert preview.preview_order == "newest-first"
+    assert decode_output(preview).size > 0
+
+
 def test_stack_growth_and_shrink_preserve_newest_existing_frames():
     bootstrap = ImageStack.bootstrap()
     run_local(request_for(1, stack_size=2), bootstrap)
@@ -243,6 +256,7 @@ def test_suite_request_returns_nested_package_response_with_runtime_metadata():
     assert payload["uID"] == "node-suite"
     assert payload["flowUID"] == "flow-1"
     assert nested["name"] == "ImageStack"
-    assert set(nested["outputs"]) == {"outputImages", "outputData"}
+    assert set(nested["outputs"]) == {"outputImages", "outputPreview", "outputData"}
     assert nested["outputs"]["outputData"]["value"] == 1
+    assert nested["outputs"]["outputPreview"]["type"] == "Image"
 

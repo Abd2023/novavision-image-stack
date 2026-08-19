@@ -19,6 +19,7 @@ does not require datasets or weights.
 | Config | `ResolutionHeight` | Maximum stored height, 64-1080, default 1080. |
 | Config | `ClearBuffer` | Clears on a False-to-True transition, default False. |
 | Output | `outputImages` | Base64 JPEG NovaVision image list, newest first. |
+| Output | `outputPreview` | One JPEG contact-sheet image of the retained frames, newest first. |
 | Output | `outputData` | Current frame count. |
 
 ## Algorithm
@@ -29,7 +30,14 @@ does not require datasets or weights.
 4. JPEG-encode the frame at quality 75.
 5. Append the compressed frame to the front of a per-flow/per-node deque.
 6. Evict the oldest frame automatically when the configured limit is reached.
-7. Return the deque contents newest first and the current count.
+7. Build a labeled single-image contact-sheet preview from the retained frames.
+8. Return the deque contents newest first, the preview, and the current count.
+
+`outputPreview` is intended for Suite's single-image `Image View` widget. It
+renders the retained frames as a labeled contact sheet, so the component can
+be demonstrated visually even when the Suite environment has no image-list
+screen widget. `outputImages` remains the machine-readable list for downstream
+components that accept multiple images.
 
 The buffer and clear-toggle state are held in the executor bootstrap dictionary.
 They survive new executor instances in the same process and reset after a
@@ -54,8 +62,11 @@ python -m compileall -q src apps service.py
 ## Suite validation
 
 Import the package into the NovaVision OpenCV image, connect Video Feed
-`outputImage` to Image Stack `inputImage`, and connect `outputImages` to a
-downstream image consumer. The count should grow until `StackSize`; the oldest
-frame should then be evicted. A rising-edge Clear Buffer action should return a
-one-frame stack, and a process restart should reset the in-memory history.
+`outputImage` to Image Stack `inputImage`, and connect `outputPreview` to the
+single-image `Image View` widget. The preview should show a labeled grid of the
+latest retained frames. Inspect `outputImages` in the flow output when a
+downstream image-list consumer is available. The count should grow until
+`StackSize`; the oldest frame should then be evicted. A rising-edge Clear
+Buffer action should return a one-frame stack, and a process restart should
+reset the in-memory history.
 

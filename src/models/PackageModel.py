@@ -113,6 +113,15 @@ class OutputImages(NovaVisionOutput):
         title = "Images"
 
 
+class OutputPreview(NovaVisionOutput):
+    name: Literal["outputPreview"] = "outputPreview"
+    value: NovaVisionImage = Field(default_factory=NovaVisionImage)
+    type: Literal["Image"] = "Image"
+
+    class Config:
+        title = "Stack Preview"
+
+
 class OutputData(NovaVisionOutput):
     name: Literal["outputData"] = "outputData"
     value: int = 0
@@ -208,6 +217,7 @@ class ImageStackConfigs(NovaVisionConfigs):
 
 class ImageStackOutputs(NovaVisionOutputs):
     outputImages: OutputImages = Field(default_factory=OutputImages)
+    outputPreview: OutputPreview = Field(default_factory=OutputPreview)
     outputData: OutputData = Field(default_factory=OutputData)
 
 
@@ -328,6 +338,7 @@ __all__ = [
     "InputImage",
     "OutputData",
     "OutputImages",
+    "OutputPreview",
     "PackageConfigs",
     "PackageModel",
     "ResolutionHeight",
