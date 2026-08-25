@@ -206,14 +206,14 @@ class FakeSuiteRequest:
         self.data = data
 
 
-def suite_request(node_uid: str, frame_index: int) -> FakeSuiteRequest:
+def suite_request(node_uid: str, frame_index: int, *, flow_uid: str = "flow-1") -> FakeSuiteRequest:
     _, image = encoded_image(frame_index)
     return FakeSuiteRequest(
         {
             "type": "component",
             "name": "ImageStack",
             "uID": node_uid,
-            "flowUID": "flow-1",
+            "flowUID": flow_uid,
             "matchedID": None,
             "debug": "False",
             "api": "False",
@@ -246,6 +246,18 @@ def suite_request(node_uid: str, frame_index: int) -> FakeSuiteRequest:
 
 def package_count(package):
     return package.configs.executor.value.value.outputs.outputData.value
+
+
+def test_suite_flow_uid_changes_do_not_reset_the_node_buffer():
+    bootstrap = ImageStack.bootstrap()
+
+    first = ImageStack(suite_request("node-suite", 1, flow_uid="execution-1"), bootstrap).run()
+    second = ImageStack(suite_request("node-suite", 2, flow_uid="execution-2"), bootstrap).run()
+    third = ImageStack(suite_request("node-suite", 3, flow_uid="execution-3"), bootstrap).run()
+
+    assert package_count(first) == 1
+    assert package_count(second) == 2
+    assert package_count(third) == 3
 
 
 def test_suite_request_returns_nested_package_response_with_runtime_metadata():

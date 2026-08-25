@@ -217,15 +217,16 @@ class ImageStack(_ComponentBase):
     def _state_key(self) -> str:
         data = self._request_data()
         if isinstance(data, dict):
-            flow_uid = data.get("flowUID") or data.get("flowUid")
             matched_id = data.get("matchedID") or data.get("matchedId")
             node_uid = data.get("uID") or data.get("uid")
         else:
-            flow_uid = matched_id = node_uid = None
+            matched_id = node_uid = None
 
-        flow_uid = flow_uid or getattr(self, "flowUID", None) or "local-flow"
+        # NovaVision uses flowUID as a per-execution correlation ID, so it can
+        # change for every incoming frame. The package node identity is stable
+        # for the lifetime of the subscriber and is the correct buffer scope.
         node_uid = matched_id or node_uid or getattr(self, "uID", None) or "local-node"
-        return f"{flow_uid}:{node_uid}"
+        return str(node_uid)
 
     @staticmethod
     def _validate_limits(stack_size: int, width: int, height: int) -> None:

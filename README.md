@@ -1,7 +1,8 @@
 # NovaVision Image Stack
 
 NovaVision component that keeps the most recent video frames in a bounded,
-per-node in-memory FIFO buffer. Every frame is downsampled when necessary and
+per-node in-memory FIFO buffer keyed by the stable package node identity. Every
+frame is downsampled when necessary and
 JPEG-compressed at quality 75 before it is stored. The component returns the
 newest frame first, exposes the current frame count, and generates a
 single-image contact-sheet preview for Suite's Image View widget.
