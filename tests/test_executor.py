@@ -258,5 +258,5 @@ def test_suite_request_returns_nested_package_response_with_runtime_metadata():
     assert nested["name"] == "ImageStack"
     assert set(nested["outputs"]) == {"outputImages", "outputPreview", "outputData"}
     assert nested["outputs"]["outputData"]["value"] == 1
-    assert nested["outputs"]["outputPreview"]["type"] == "Image"
+    assert nested["outputs"]["outputPreview"]["type"] == "object"
 

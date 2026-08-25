@@ -115,8 +115,8 @@ class OutputImages(NovaVisionOutput):
 
 class OutputPreview(NovaVisionOutput):
     name: Literal["outputPreview"] = "outputPreview"
-    value: NovaVisionImage = Field(default_factory=NovaVisionImage)
-    type: Literal["Image"] = "Image"
+    value: Optional[NovaVisionImage] = None
+    type: Literal["object"] = "object"
 
     class Config:
         title = "Stack Preview"

@@ -63,6 +63,8 @@ def test_package_model_schema_exposes_expected_sockets_and_task_title():
     assert schema(OutputImages)["title"] == "Images"
     assert schema(OutputPreview)["title"] == "Stack Preview"
     assert schema(OutputData)["title"] == "Frame Count"
+    assert response_payload["outputs"]["outputPreview"]["type"] == "object"
+    assert response_payload["outputs"]["outputPreview"]["value"] is None
     assert "Image Stack" in str(executor_schema)
 
 
@@ -88,6 +90,7 @@ def test_clear_buffer_is_a_boolean_dropdown_and_output_models_use_sdk_bases():
     assert ClearBuffer().field == "dropdownlist"
     assert ClearBuffer().type == "object"
     assert issubclass(OutputImages, NovaVisionOutput)
+    assert issubclass(OutputPreview, NovaVisionOutput)
     assert issubclass(OutputData, NovaVisionOutput)
 
 

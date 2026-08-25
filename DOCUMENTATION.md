@@ -39,6 +39,10 @@ be demonstrated visually even when the Suite environment has no image-list
 screen widget. `outputImages` remains the machine-readable list for downstream
 components that accept multiple images.
 
+For Suite socket compatibility, the outer `outputPreview` output is typed as
+`object`; its runtime `value` is the normal NovaVision `Image` object. This is
+the same single-image socket shape expected by `Image View` and `File Save`.
+
 The buffer and clear-toggle state are held in the executor bootstrap dictionary.
 They survive new executor instances in the same process and reset after a
 service restart or redeploy.
