@@ -70,6 +70,10 @@ def decode_output(image):
     return decoded
 
 
+def output_shape(image):
+    return tuple(int(value) for value in np.frombuffer(base64.b64decode(image.shape_key), dtype=np.int64))
+
+
 def test_first_frame_and_newest_first_order():
     bootstrap = ImageStack.bootstrap()
 
@@ -116,15 +120,28 @@ def test_stack_growth_and_shrink_preserve_newest_existing_frames():
 
 
 def test_resize_preserves_aspect_ratio_and_never_upscales():
-    _, image = encoded_image(1, shape=(200, 400, 3))
+    _, image = encoded_image(
+        1,
+        shape=(200, 400, 3),
+        metadata={"metadata": {"frame_index": 7, "width": 400, "height": 200}},
+    )
     request = ImageStackRequest(
         inputs={"inputImage": {"value": [image]}},
         configs={"ResolutionWidth": {"value": 100}, "ResolutionHeight": {"value": 100}},
     )
     response = run_local(request)
-    resized = decode_output(response.outputs.outputImages.value[0])
+    output = response.outputs.outputImages.value[0]
+    resized = decode_output(output)
 
     assert resized.shape[:2] == (50, 100)
+    assert output_shape(output) == (50, 100, 3)
+    assert output.metadata == {
+        "frame_index": 7,
+        "width": 100,
+        "height": 50,
+        "source_width": 400,
+        "source_height": 200,
+    }
 
     _, small_image = encoded_image(2, shape=(40, 50, 3))
     no_upscale = run_local(ImageStackRequest(inputs={"inputImage": {"value": [small_image]}}))

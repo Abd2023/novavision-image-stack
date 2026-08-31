@@ -330,6 +330,38 @@ class ImageStack(_ComponentBase):
         reserved = {"name", "uID", "uid", "mimeType", "encoding", "value", "r_key", "shape_key", "type"}
         return {key: value for key, value in image.items() if key not in reserved}
 
+    @classmethod
+    def _output_metadata(cls, image: Dict[str, Any], shape: Tuple[int, ...]) -> Dict[str, Any]:
+        """Return source metadata with dimensions matching the encoded output."""
+
+        metadata = cls._source_metadata(image)
+        output_height, output_width = shape[:2]
+
+        nested_metadata = metadata.get("metadata")
+        if isinstance(nested_metadata, dict) and ({"width", "height"} & nested_metadata.keys()):
+            nested_metadata = dict(nested_metadata)
+            source_width = nested_metadata.get("width")
+            source_height = nested_metadata.get("height")
+            if source_width is not None and source_width != output_width:
+                nested_metadata.setdefault("source_width", source_width)
+            if source_height is not None and source_height != output_height:
+                nested_metadata.setdefault("source_height", source_height)
+            nested_metadata["width"] = output_width
+            nested_metadata["height"] = output_height
+            metadata["metadata"] = nested_metadata
+
+        if "width" in metadata or "height" in metadata:
+            source_width = metadata.get("width")
+            source_height = metadata.get("height")
+            if source_width is not None and source_width != output_width:
+                metadata.setdefault("source_width", source_width)
+            if source_height is not None and source_height != output_height:
+                metadata.setdefault("source_height", source_height)
+            metadata["width"] = output_width
+            metadata["height"] = output_height
+
+        return metadata
+
     @staticmethod
     def _frame_image(frame: Dict[str, Any], *, name: str = "outputImages") -> Any:
         shape_bytes = np.asarray(frame["shape"], dtype=np.int64).tobytes()
@@ -502,7 +534,7 @@ class ImageStack(_ComponentBase):
             "jpeg": jpeg,
             "shape": shape,
             "uID": self._source_uid(source_image),
-            "metadata": self._source_metadata(source_image),
+            "metadata": self._output_metadata(source_image, shape),
         }
 
         state_key = self._state_key()
