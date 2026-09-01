@@ -12,8 +12,24 @@ workflow block. See [NOTICE](NOTICE) for attribution and reference links.
 
 ## Repository status
 
-This repository contains the NovaVision OpenCV component implementation. It
-does not contain an AI model, dataset, or model weights.
+This repository follows NovaVision's Package template. `setup.py` declares the
+installable package, `src/executors/ImageStack.py` contains the component,
+`src/models/PackageModel.py` defines the Suite schema, and
+`src/utils/response.py` builds responses through NovaVision's `PackageHelper`.
+Image-runtime files such as `service.py`, Dockerfiles, and image-level
+requirements files intentionally belong to the parent NovaVision image and are
+not part of this package repository.
+
+The repository contains no AI model, dataset, or model weights.
+
+## Validation
+
+```powershell
+python -m pytest -q
+python apps\run_sample_client.py
+python setup.py --name
+python -m compileall -q src apps setup.py
+```
 
 ## License
 

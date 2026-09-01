@@ -63,13 +63,13 @@ Desteklenen görüntü veri biçimleri:
 
 | Teknoloji | Sürüm / Aralık | Kullanım |
 |---|---:|---|
-| Python | 3.12+ | Executor, servis ve test kodu |
+| Python | 3.8+ | Executor, paketleme ve test kodu |
 | OpenCV | `>=4.10,<5` | Görüntü decode, resize, JPEG encode ve preview üretimi |
 | NumPy | `>=1.26,<3` | Kare ve `shape_key` dizileri |
 | Pydantic | `>=1,<3` | NovaVision PackageModel, Request/Response ve parametre doğrulaması |
 | NovaVision SDK | Kurulu Suite sürümü | `Component`, `Image`, `Package`, helper ve executor çalışma zamanı |
 | Pytest | `>=8,<9` | Model ve executor regresyon testleri |
-| Docker | Python 3.12 slim | Geliştirme ve üretim image tanımları |
+| Setuptools | Kurulu Python sürümü | NovaVision Package şablonuna uygun `setup.py` paket tanımı |
 
 ### Her teknolojinin rolü ve kullanımı (kart formatında)
 
@@ -85,7 +85,7 @@ Desteklenen görüntü veri biçimleri:
 
 > **Pytest** — FIFO sırası, kapasite değişimi, resize, metadata, preview, temizleme, düğüm izolasyonu ve değişken `flowUID` davranışlarını doğrular.
 
-> **Docker** — `Dockerfile.prod` yalnızca üretim bağımlılıklarını, `Dockerfile.dev` ise test bağımlılıklarını da yükler. Her iki image'ın varsayılan komutu `python service.py` şeklindedir.
+> **Setuptools ve Package şablonu** — `setup.py`, paketi `novavision.image_stack` namespace'i altında tanımlar. `service.py`, Dockerfile'lar ve image-seviyesi requirements dosyaları bu repository'de tutulmaz; bunlar paketi çalıştıran üst NovaVision Image projesinin sorumluluğundadır.
 
 ### Proje yapısı (tree formatında)
 
@@ -99,21 +99,18 @@ novavision-image-stack/
 ├── src/
 │   ├── executors/
 │   │   └── ImageStack.py          # Ana executor ve Suite script entrypoint
-│   └── models/
-│       └── PackageModel.py        # Tek kanonik PackageModel ve socket modelleri
+│   ├── models/
+│   │   └── PackageModel.py        # Tek kanonik PackageModel ve socket modelleri
+│   └── utils/
+│       └── response.py            # PackageHelper tabanlı response üretimi
 ├── tests/
 │   ├── test_executor.py           # Davranış/regresyon testleri
 │   └── test_package_model.py      # Şema ve model testleri
-├── Dockerfile.dev
-├── Dockerfile.prod
 ├── DOCUMENTATION.md               # Bu teknik rapor
 ├── LICENSE                        # Apache-2.0
 ├── NOTICE                         # Roboflow davranış referansı bildirimi
 ├── README.md
-├── pyproject.toml
-├── requirements.dev.txt
-├── requirements.prod.txt
-└── service.py                     # Executor kayıt ve bootstrap kontrolü
+└── setup.py                       # NovaVision Package şablonu paket tanımı
 ```
 
 ---
@@ -123,6 +120,7 @@ novavision-image-stack/
 ### `ImageStack` (Tam path: `src/executors/ImageStack.py`)
 
 Ana sınıf `ImageStack`, NovaVision SDK mevcutsa SDK `Component` sınıfından, yerel çalışmada ise uyumluluk fallback sınıfından türetilir.
+Suite isteğinde `PackageModel` request üzerine bağlanır. Çıkış modelleri `src/utils/response.py` içindeki `build_response()` fonksiyonuna devredilir; bu fonksiyon NovaVision ortamında resmi `PackageHelper` ile paket response'unu oluşturur.
 
 Temel yaşam döngüsü:
 
@@ -587,21 +585,22 @@ Yerel doğrulama komutları:
 
 ```powershell
 python -m pytest -q
-python service.py
 python apps\run_sample_client.py
-python -m compileall -q src apps service.py
+python setup.py --name
+python -m compileall -q src apps setup.py
 ```
 
 Son doğrulama sonucu:
 
 - ✅ Standalone test ortamı: 16 test geçti
 - ✅ Alpha'nın kurulu NovaVision SDK yolu ile: 16 test geçti
-- ✅ `service.py`: `ImageStack: ready`
+- ✅ Temiz `setup.py` wheel build/install: `PackageModel`, `ImageStack` ve `build_response` import edildi
 - ✅ Örnek istemci: `1 -> 2 -> 3`, ardından FIFO kapasitesinde en eski karenin düşmesi
 - ✅ `shape_key`: 1280×720 giriş ve 640×360 ayarında `(360, 640, 3)`
 - ✅ Metadata: çıkış `640×360`, kaynak `1280×720` olarak ayrı alanlarda
-- ✅ Alpha canlı akış: altı karelik newest-first temas sayfası görüldü
-- ✅ Akış durdurulup tek seferlik `Run Flow` çalıştırıldığında aynı process içindeki önceki tampon korundu ve yeni kare listenin başına eklendi
+- ✅ Şablon geçişi öncesi Alpha canlı kabulü: altı karelik newest-first temas sayfası görüldü
+- ✅ Şablon geçişi öncesi akış durdurulup tek seferlik `Run Flow` çalıştırıldığında aynı process içindeki önceki tampon korundu ve yeni kare listenin başına eklendi
+- ⏳ Package şablonuna geçişten sonra Alpha'da paket güncelleme ve kısa smoke test yapılmalı
 
 Önerilen son kullanıcı kabul senaryosu:
 

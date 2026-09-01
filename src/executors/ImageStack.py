@@ -39,22 +39,29 @@ def _load_image_helper():
 
 try:
     from components.ImageStack.src.models.PackageModel import (  # type: ignore
-        ConfigExecutor,
-        ImageStackExecutor,
         ImageStackOutputs,
         ImageStackResponse,
-        PackageConfigs,
         PackageModel,
+        NovaVisionImage,
     )
+    from components.ImageStack.src.utils.response import build_response  # type: ignore
 except ImportError:
-    from src.models.PackageModel import (  # type: ignore
-        ConfigExecutor,
-        ImageStackExecutor,
-        ImageStackOutputs,
-        ImageStackResponse,
-        PackageConfigs,
-        PackageModel,
-    )
+    try:
+        from src.models.PackageModel import (  # type: ignore
+            ImageStackOutputs,
+            ImageStackResponse,
+            PackageModel,
+            NovaVisionImage,
+        )
+        from src.utils.response import build_response
+    except ImportError:
+        from novavision.image_stack.models.PackageModel import (  # type: ignore
+            ImageStackOutputs,
+            ImageStackResponse,
+            PackageModel,
+            NovaVisionImage,
+        )
+        from novavision.image_stack.utils.response import build_response  # type: ignore
 
 
 if NovaVisionComponent is None:
@@ -186,6 +193,7 @@ class ImageStack(_ComponentBase):
     def __init__(self, request, bootstrap):
         if NovaVisionComponent is not None and hasattr(request, "data"):
             super().__init__(request, bootstrap)
+            self.request.model = PackageModel(**self.request.data)
         else:
             self.request = request
             self.bootstrap = bootstrap
@@ -385,8 +393,6 @@ class ImageStack(_ComponentBase):
         payload["r_key"] = ""
         payload["type"] = "Image"
 
-        from src.models.PackageModel import NovaVisionImage  # type: ignore
-
         return NovaVisionImage(**payload)
 
     @staticmethod
@@ -502,21 +508,6 @@ class ImageStack(_ComponentBase):
             )
         )
 
-    def _build_package_response(self, response: Any) -> Any:
-        executor_response = ImageStackExecutor(value=response)
-        package_configs = PackageConfigs(executor=ConfigExecutor(value=executor_response))
-        raw_data = self._request_data()
-        package_fields = getattr(PackageModel, "model_fields", None) or getattr(PackageModel, "__fields__", {})
-        metadata_defaults = {
-            "uID": raw_data.get("uID") if isinstance(raw_data, dict) else getattr(self, "uID", None),
-            "flowUID": raw_data.get("flowUID") if isinstance(raw_data, dict) else getattr(self, "flowUID", None),
-            "matchedID": raw_data.get("matchedID") if isinstance(raw_data, dict) else getattr(self, "matchedID", None),
-            "debug": raw_data.get("debug", "False") if isinstance(raw_data, dict) else getattr(self, "debug", "False"),
-            "api": raw_data.get("api", "False") if isinstance(raw_data, dict) else getattr(self, "api", "False"),
-        }
-        metadata = {key: value for key, value in metadata_defaults.items() if key in package_fields and value is not None}
-        return PackageModel(type="component", name="ImageStack", configs=package_configs, **metadata)
-
     def run(self) -> Any:
         input_image = self._get_param("inputImage")
         if input_image is None or (isinstance(input_image, list) and not input_image):
@@ -554,10 +545,10 @@ class ImageStack(_ComponentBase):
             buffer.appendleft(stored_frame)
             frames = list(buffer)
 
-        response = self._build_response(frames, width, height)
+        self.response = self._build_response(frames, width, height)
         if hasattr(self.request, "data") or isinstance(self.request, dict):
-            return self._build_package_response(response)
-        return response
+            return build_response(context=self)
+        return self.response
 
 
 if __name__ == "__main__":

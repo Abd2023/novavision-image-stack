@@ -1,3 +1,0 @@
--r requirements.prod.txt
-pytest>=8,<9
-
