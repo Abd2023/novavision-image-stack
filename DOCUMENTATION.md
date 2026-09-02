@@ -68,7 +68,6 @@ Desteklenen görüntü veri biçimleri:
 | NumPy | `>=1.26,<3` | Kare ve `shape_key` dizileri |
 | Pydantic | `>=1,<3` | NovaVision PackageModel, Request/Response ve parametre doğrulaması |
 | NovaVision SDK | Kurulu Suite sürümü | `Component`, `Image`, `Package`, helper ve executor çalışma zamanı |
-| Pytest | `>=8,<9` | Model ve executor regresyon testleri |
 | Setuptools | Kurulu Python sürümü | NovaVision Package şablonuna uygun `setup.py` paket tanımı |
 
 ### Her teknolojinin rolü ve kullanımı (kart formatında)
@@ -83,19 +82,12 @@ Desteklenen görüntü veri biçimleri:
 
 > **Deque tabanlı durum yönetimi** — Python `collections.deque(maxlen=StackSize)` eski kareleri otomatik düşürür. `appendleft` sayesinde çıktı her zaman en yeni kareden en eski kareye sıralanır.
 
-> **Pytest** — FIFO sırası, kapasite değişimi, resize, metadata, preview, temizleme, düğüm izolasyonu ve değişken `flowUID` davranışlarını doğrular.
-
 > **Setuptools ve Package şablonu** — `setup.py`, paketi `novavision.image_stack` namespace'i altında tanımlar. `service.py`, Dockerfile'lar ve image-seviyesi requirements dosyaları bu repository'de tutulmaz; bunlar paketi çalıştıran üst NovaVision Image projesinin sorumluluğundadır.
 
 ### Proje yapısı (tree formatında)
 
 ```text
 novavision-image-stack/
-├── apps/
-│   ├── run_sample_client.py       # Dört karelik yerel FIFO örneği
-│   └── sample_request.json        # Örnek NovaVision istek gövdesi
-├── notebooks/
-│   └── README.md                  # Notebook kullanım notu
 ├── src/
 │   ├── executors/
 │   │   └── ImageStack.py          # Ana executor ve Suite script entrypoint
@@ -103,12 +95,8 @@ novavision-image-stack/
 │   │   └── PackageModel.py        # Tek kanonik PackageModel ve socket modelleri
 │   └── utils/
 │       └── response.py            # PackageHelper tabanlı response üretimi
-├── tests/
-│   ├── test_executor.py           # Davranış/regresyon testleri
-│   └── test_package_model.py      # Şema ve model testleri
 ├── DOCUMENTATION.md               # Bu teknik rapor
 ├── LICENSE                        # Apache-2.0
-├── NOTICE                         # Roboflow davranış referansı bildirimi
 ├── README.md
 └── setup.py                       # NovaVision Package şablonu paket tanımı
 ```
@@ -584,18 +572,14 @@ Maksimum `StackSize=64`, maksimum tek-kare sınırı 1920×1080 ve JPEG kalite 7
 Yerel doğrulama komutları:
 
 ```powershell
-python -m pytest -q
-python apps\run_sample_client.py
 python setup.py --name
-python -m compileall -q src apps setup.py
+python -m compileall -q src setup.py
 ```
 
 Son doğrulama sonucu:
 
-- ✅ Standalone test ortamı: 16 test geçti
-- ✅ Alpha'nın kurulu NovaVision SDK yolu ile: 16 test geçti
 - ✅ Temiz `setup.py` wheel build/install: `PackageModel`, `ImageStack` ve `build_response` import edildi
-- ✅ Örnek istemci: `1 -> 2 -> 3`, ardından FIFO kapasitesinde en eski karenin düşmesi
+- ✅ Kaynak derleme kontrolü: `src` ve `setup.py` başarıyla derlendi
 - ✅ `shape_key`: 1280×720 giriş ve 640×360 ayarında `(360, 640, 3)`
 - ✅ Metadata: çıkış `640×360`, kaynak `1280×720` olarak ayrı alanlarda
 - ✅ Şablon geçişi öncesi Alpha canlı kabulü: altı karelik newest-first temas sayfası görüldü

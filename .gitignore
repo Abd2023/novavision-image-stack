@@ -11,8 +11,9 @@ htmlcov/
 *.egg-info/
 build/
 dist/
+output/
+tmp/
 .codex_local/
 .DS_Store
 Thumbs.db
 desktop.ini
-

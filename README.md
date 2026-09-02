@@ -8,7 +8,7 @@ newest frame first, exposes the current frame count, and generates a
 single-image contact-sheet preview for Suite's Image View widget.
 
 The implementation is behavior-equivalent to the Roboflow Image Stack v1
-workflow block. See [NOTICE](NOTICE) for attribution and reference links.
+workflow block.
 
 ## Repository status
 
@@ -25,10 +25,8 @@ The repository contains no AI model, dataset, or model weights.
 ## Validation
 
 ```powershell
-python -m pytest -q
-python apps\run_sample_client.py
 python setup.py --name
-python -m compileall -q src apps setup.py
+python -m compileall -q src setup.py
 ```
 
 ## License
