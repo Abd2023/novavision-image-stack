@@ -7,8 +7,8 @@ import cv2
 import numpy as np
 import pytest
 
-from src.executors.ImageStack import ImageStack
-from src.models.PackageModel import ImageStackRequest
+from src.executors.ImageStack import ImageStack, _package_model_payload
+from src.models.PackageModel import ImageStackRequest, PackageModel
 
 
 def encoded_image(index: int, *, shape=(120, 160, 3), uid: str | None = None, metadata=None):
@@ -53,6 +53,26 @@ def request_for(index: int, *, stack_size=3, width=1920, height=1080, clear=Fals
 
 def run_local(request, bootstrap=None):
     return ImageStack(request, bootstrap if bootstrap is not None else ImageStack.bootstrap()).run()
+
+
+def test_runtime_transport_fields_are_excluded_from_package_validation():
+    runtime_data = {
+        "type": "component",
+        "name": "ImageStack",
+        "uID": "node-runtime",
+        "flowUID": "flow-runtime",
+        "configs": {},
+        "websocket": {"enabled": True},
+        "stream": {"topic": "frames"},
+        "db": {"index": 0},
+    }
+
+    payload = _package_model_payload(runtime_data)
+    package = PackageModel(**payload)
+
+    assert set(payload).isdisjoint({"websocket", "stream", "db"})
+    assert package.uID == "node-runtime"
+    assert runtime_data["websocket"] == {"enabled": True}
 
 
 def output_ids(response):

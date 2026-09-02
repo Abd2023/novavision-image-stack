@@ -84,6 +84,23 @@ MAX_RESOLUTION_HEIGHT = 1080
 JPEG_QUALITY = 75
 
 
+def _package_model_payload(data: Any) -> Dict[str, Any]:
+    """Keep SDK transport metadata outside the strict package schema."""
+
+    if not isinstance(data, dict):
+        return {}
+
+    model_fields = getattr(PackageModel, "model_fields", None) or getattr(PackageModel, "__fields__", {})
+    allowed_keys = set(model_fields)
+    allowed_keys.update(
+        alias
+        for field in model_fields.values()
+        if (alias := getattr(field, "alias", None))
+    )
+    allowed_keys.update({"executor", "Executor"})
+    return {key: value for key, value in data.items() if key in allowed_keys}
+
+
 def _model_to_dict(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         try:
@@ -193,7 +210,7 @@ class ImageStack(_ComponentBase):
     def __init__(self, request, bootstrap):
         if NovaVisionComponent is not None and hasattr(request, "data"):
             super().__init__(request, bootstrap)
-            self.request.model = PackageModel(**self.request.data)
+            self.request.model = PackageModel(**_package_model_payload(self.request.data))
         else:
             self.request = request
             self.bootstrap = bootstrap
